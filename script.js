@@ -280,23 +280,62 @@ function createRoom() {
     game.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     game.isHost = true;
     document.getElementById('roomCode').value = game.roomCode;
-    alert(`Room created! Code: ${game.roomCode}\nShare this code with your friend.`);
+    
+    // Store room in localStorage for simple local network sharing
+    localStorage.setItem(`snakeRoom_${game.roomCode}`, JSON.stringify({
+        host: true,
+        created: Date.now(),
+        gameState: 'waiting'
+    }));
+    
+    alert(`Room created! Code: ${game.roomCode}\n\nNOTE: This is currently LOCAL MULTIPLAYER only.\nBoth players need to be on the same device.\n\nPlayer 1: Arrow Keys\nPlayer 2: WASD Keys`);
 }
 
 function joinRoom() {
     const code = document.getElementById('roomCode').value.toUpperCase();
     if (code.length === 6) {
-        game.roomCode = code;
-        game.isHost = false;
-        alert(`Joined room: ${code}`);
+        // Check if room exists in localStorage
+        const roomData = localStorage.getItem(`snakeRoom_${code}`);
+        if (roomData) {
+            game.roomCode = code;
+            game.isHost = false;
+            alert(`Joined room: ${code}\n\nNOTE: This is LOCAL MULTIPLAYER.\nBoth players use the same device.\n\nPlayer 1: Arrow Keys\nPlayer 2: WASD Keys`);
+        } else {
+            alert(`Room ${code} not found.\n\nNOTE: Currently only local multiplayer is supported.\nBoth players must be on the same device.`);
+        }
     } else {
         alert('Please enter a valid 6-character room code');
     }
 }
 
+// Improved multiplayer start game
+function startMultiplayerGame() {
+    if (!game.roomCode) {
+        alert('Please create or join a room first!');
+        return;
+    }
+    
+    // Update room state
+    if (game.isHost) {
+        localStorage.setItem(`snakeRoom_${game.roomCode}`, JSON.stringify({
+            host: true,
+            created: Date.now(),
+            gameState: 'playing'
+        }));
+    }
+    
+    startGame();
+}
+
 // Game functions
 function startGame() {
     if (game.isRunning) return;
+    
+    // Check if multiplayer mode requires room
+    if (game.mode === 'multiplayer' && !game.roomCode) {
+        alert('Please create or join a room first for multiplayer!');
+        return;
+    }
     
     game.isRunning = true;
     game.speed = INITIAL_SPEED;
@@ -311,11 +350,11 @@ function startGame() {
         snake.direction = { x: 1, y: 0 };
         snake.nextDirection = { x: 1, y: 0 };
     } else {
-        // Multiplayer mode
+        // Multiplayer mode - local multiplayer on same device
         game.players.player1.score = 0;
         game.players.player2.score = 0;
         
-        // Reset both snakes
+        // Reset both snakes with better starting positions
         snake = new Snake();
         snake.body = [{ x: 15, y: 10 }];
         snake.direction = { x: -1, y: 0 };
@@ -328,6 +367,11 @@ function startGame() {
         
         game.players.player1.snake = snake;
         game.players.player2.snake = snake2;
+        
+        // Show multiplayer instructions
+        if (isMobile()) {
+            alert('Multiplayer started!\n\nThis device will control Player 1 (Green snake).\nUse touch controls or swipe gestures.\n\nPlayer 2 needs to use a keyboard with WASD keys.');
+        }
     }
     
     // Reset food
@@ -338,7 +382,12 @@ function startGame() {
     startBtn.style.display = 'none';
     restartBtn.style.display = 'inline-block';
     gameOverDiv.style.display = 'none';
-    updateScore();
+    
+    if (game.mode === 'single') {
+        updateScore();
+    } else {
+        updateMultiplayerScore();
+    }
     
     // Start game loop
     game.gameLoop = setInterval(gameUpdate, game.speed);
@@ -571,22 +620,33 @@ document.getElementById('nextLevel').addEventListener('click', () => {
     }
 });
 
-// Mobile control buttons
-document.getElementById('upBtn').addEventListener('click', () => {
-    if (game.isRunning) snake.changeDirection({ x: 0, y: -1 });
-});
+// Mobile control buttons with better touch handling
+function addMobileControl(buttonId, direction) {
+    const button = document.getElementById(buttonId);
+    
+    // Touch events
+    button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (game.isRunning) snake.changeDirection(direction);
+    }, { passive: false });
+    
+    // Click events (fallback)
+    button.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (game.isRunning) snake.changeDirection(direction);
+    });
+    
+    // Prevent context menu
+    button.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+}
 
-document.getElementById('downBtn').addEventListener('click', () => {
-    if (game.isRunning) snake.changeDirection({ x: 0, y: 1 });
-});
-
-document.getElementById('leftBtn').addEventListener('click', () => {
-    if (game.isRunning) snake.changeDirection({ x: -1, y: 0 });
-});
-
-document.getElementById('rightBtn').addEventListener('click', () => {
-    if (game.isRunning) snake.changeDirection({ x: 1, y: 0 });
-});
+// Add controls for all directions
+addMobileControl('upBtn', { x: 0, y: -1 });
+addMobileControl('downBtn', { x: 0, y: 1 });
+addMobileControl('leftBtn', { x: -1, y: 0 });
+addMobileControl('rightBtn', { x: 1, y: 0 });
 
 // Keyboard controls
 document.addEventListener('keydown', (e) => {
@@ -694,22 +754,56 @@ function handleSwipe() {
 
 // Prevent scrolling on mobile when touching the game area
 document.body.addEventListener('touchstart', (e) => {
-    if (e.target === canvas || e.target.classList.contains('control-btn')) {
+    if (e.target === canvas ||
+        e.target.classList.contains('control-btn') ||
+        e.target.closest('.mobile-controls') ||
+        e.target.closest('.game-container')) {
         e.preventDefault();
     }
 }, { passive: false });
 
 document.body.addEventListener('touchend', (e) => {
-    if (e.target === canvas || e.target.classList.contains('control-btn')) {
+    if (e.target === canvas ||
+        e.target.classList.contains('control-btn') ||
+        e.target.closest('.mobile-controls') ||
+        e.target.closest('.game-container')) {
         e.preventDefault();
     }
 }, { passive: false });
 
 document.body.addEventListener('touchmove', (e) => {
-    if (e.target === canvas || e.target.classList.contains('control-btn')) {
+    if (e.target === canvas ||
+        e.target.classList.contains('control-btn') ||
+        e.target.closest('.mobile-controls')) {
         e.preventDefault();
     }
 }, { passive: false });
+
+// Additional mobile button improvements
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure mobile controls work on all mobile browsers
+    const mobileButtons = document.querySelectorAll('.control-btn');
+    mobileButtons.forEach(button => {
+        // Add visual feedback
+        button.addEventListener('touchstart', () => {
+            button.style.transform = 'scale(0.95)';
+        });
+        
+        button.addEventListener('touchend', () => {
+            button.style.transform = 'scale(1)';
+        });
+        
+        // Prevent double-tap zoom
+        let lastTouchEnd = 0;
+        button.addEventListener('touchend', (e) => {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    });
+});
 
 // Initialize game
 loadLevel(1); // Load first level

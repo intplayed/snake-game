@@ -198,6 +198,11 @@ button {
     transition: all 0.3s ease;
     margin: 0 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 button:hover {
