@@ -280,62 +280,25 @@ function createRoom() {
     game.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     game.isHost = true;
     document.getElementById('roomCode').value = game.roomCode;
-    
-    // Store room in localStorage for simple local network sharing
-    localStorage.setItem(`snakeRoom_${game.roomCode}`, JSON.stringify({
-        host: true,
-        created: Date.now(),
-        gameState: 'waiting'
-    }));
-    
-    alert(`Room created! Code: ${game.roomCode}\n\nNOTE: This is currently LOCAL MULTIPLAYER only.\nBoth players need to be on the same device.\n\nPlayer 1: Arrow Keys\nPlayer 2: WASD Keys`);
+    alert(`Room created: ${game.roomCode}\n\nThis is LOCAL MULTIPLAYER on the same device.\nPlayer 1: Arrow Keys ↑↓←→\nPlayer 2: WASD Keys`);
 }
 
 function joinRoom() {
     const code = document.getElementById('roomCode').value.toUpperCase();
     if (code.length === 6) {
-        // Check if room exists in localStorage
-        const roomData = localStorage.getItem(`snakeRoom_${code}`);
-        if (roomData) {
-            game.roomCode = code;
-            game.isHost = false;
-            alert(`Joined room: ${code}\n\nNOTE: This is LOCAL MULTIPLAYER.\nBoth players use the same device.\n\nPlayer 1: Arrow Keys\nPlayer 2: WASD Keys`);
-        } else {
-            alert(`Room ${code} not found.\n\nNOTE: Currently only local multiplayer is supported.\nBoth players must be on the same device.`);
-        }
+        game.roomCode = code;
+        game.isHost = false;
+        alert(`Joined room: ${code}\n\nThis is LOCAL MULTIPLAYER on the same device.\nPlayer 1: Arrow Keys ↑↓←→\nPlayer 2: WASD Keys`);
     } else {
         alert('Please enter a valid 6-character room code');
     }
-}
-
-// Improved multiplayer start game
-function startMultiplayerGame() {
-    if (!game.roomCode) {
-        alert('Please create or join a room first!');
-        return;
-    }
-    
-    // Update room state
-    if (game.isHost) {
-        localStorage.setItem(`snakeRoom_${game.roomCode}`, JSON.stringify({
-            host: true,
-            created: Date.now(),
-            gameState: 'playing'
-        }));
-    }
-    
-    startGame();
 }
 
 // Game functions
 function startGame() {
     if (game.isRunning) return;
     
-    // Check if multiplayer mode requires room
-    if (game.mode === 'multiplayer' && !game.roomCode) {
-        alert('Please create or join a room first for multiplayer!');
-        return;
-    }
+    // No room required for local multiplayer
     
     game.isRunning = true;
     game.speed = INITIAL_SPEED;
@@ -369,9 +332,7 @@ function startGame() {
         game.players.player2.snake = snake2;
         
         // Show multiplayer instructions
-        if (isMobile()) {
-            alert('Multiplayer started!\n\nThis device will control Player 1 (Green snake).\nUse touch controls or swipe gestures.\n\nPlayer 2 needs to use a keyboard with WASD keys.');
-        }
+        alert('Multiplayer started!\n\nPlayer 1 (Green): Arrow Keys ↑↓←→\nPlayer 2 (Red): WASD Keys\n\nBoth players use the same device.');
     }
     
     // Reset food
@@ -657,52 +618,22 @@ document.getElementById('nextLevel').addEventListener('click', () => {
     }
 });
 
-// Mobile control buttons with enhanced touch handling
+// Simplified mobile control buttons
 function addMobileControl(buttonId, direction) {
     const button = document.getElementById(buttonId);
-    if (!button) {
-        console.error(`Button ${buttonId} not found`);
-        return;
-    }
+    if (!button) return;
     
-    console.log(`Adding controls for ${buttonId}`);
-    
-    // Multiple event types for maximum compatibility
-    const handleControl = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log(`${buttonId} pressed, game running: ${game.isRunning}`);
-        
+    const handleControl = () => {
         if (game.isRunning) {
             snake.changeDirection(direction);
-            console.log(`Direction changed to:`, direction);
         }
     };
     
-    // Touch events (primary for mobile)
-    button.addEventListener('touchstart', handleControl, { passive: false });
-    button.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, { passive: false });
-    
-    // Mouse events (fallback)
-    button.addEventListener('mousedown', handleControl);
+    // Simple event handlers
     button.addEventListener('click', handleControl);
-    
-    // Prevent context menu and selection
-    button.addEventListener('contextmenu', (e) => e.preventDefault());
-    button.addEventListener('selectstart', (e) => e.preventDefault());
-    
-    // Visual feedback
-    button.addEventListener('touchstart', () => {
-        button.style.transform = 'scale(0.9)';
-        button.style.opacity = '0.8';
-    });
-    
-    button.addEventListener('touchend', () => {
-        button.style.transform = 'scale(1)';
-        button.style.opacity = '1';
+    button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleControl();
     });
 }
 
@@ -835,29 +766,9 @@ function handleSwipe() {
     }
 }
 
-// Prevent scrolling on mobile when touching the game area
-document.body.addEventListener('touchstart', (e) => {
-    if (e.target === canvas ||
-        e.target.classList.contains('control-btn') ||
-        e.target.closest('.mobile-controls') ||
-        e.target.closest('.game-container')) {
-        e.preventDefault();
-    }
-}, { passive: false });
-
-document.body.addEventListener('touchend', (e) => {
-    if (e.target === canvas ||
-        e.target.classList.contains('control-btn') ||
-        e.target.closest('.mobile-controls') ||
-        e.target.closest('.game-container')) {
-        e.preventDefault();
-    }
-}, { passive: false });
-
+// Only prevent scrolling on canvas
 document.body.addEventListener('touchmove', (e) => {
-    if (e.target === canvas ||
-        e.target.classList.contains('control-btn') ||
-        e.target.closest('.mobile-controls')) {
+    if (e.target === canvas) {
         e.preventDefault();
     }
 }, { passive: false });
