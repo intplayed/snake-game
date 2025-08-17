@@ -247,9 +247,39 @@ function render() {
     snake.render();
 }
 
+// Mobile detection
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768);
+}
+
+// Show mobile controls if on mobile device
+if (isMobile()) {
+    document.getElementById('mobileControls').style.display = 'flex';
+    document.querySelector('.desktop-instruction').style.display = 'none';
+    document.querySelector('.mobile-instruction').style.display = 'block';
+}
+
 // Event listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+
+// Mobile control buttons
+document.getElementById('upBtn').addEventListener('click', () => {
+    if (game.isRunning) snake.changeDirection({ x: 0, y: -1 });
+});
+
+document.getElementById('downBtn').addEventListener('click', () => {
+    if (game.isRunning) snake.changeDirection({ x: 0, y: 1 });
+});
+
+document.getElementById('leftBtn').addEventListener('click', () => {
+    if (game.isRunning) snake.changeDirection({ x: -1, y: 0 });
+});
+
+document.getElementById('rightBtn').addEventListener('click', () => {
+    if (game.isRunning) snake.changeDirection({ x: 1, y: 0 });
+});
 
 // Keyboard controls
 document.addEventListener('keydown', (e) => {
@@ -281,6 +311,75 @@ gameOverDiv.addEventListener('click', (e) => {
         gameOverDiv.style.display = 'none';
     }
 });
+
+// Touch/Swipe gesture support
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!game.isRunning) return;
+    
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    
+    handleSwipe();
+}, { passive: false });
+
+function handleSwipe() {
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const minSwipeDistance = 30;
+    
+    // Check if swipe is long enough
+    if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
+        return;
+    }
+    
+    // Determine swipe direction
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        if (deltaX > 0) {
+            snake.changeDirection({ x: 1, y: 0 }); // Right
+        } else {
+            snake.changeDirection({ x: -1, y: 0 }); // Left
+        }
+    } else {
+        // Vertical swipe
+        if (deltaY > 0) {
+            snake.changeDirection({ x: 0, y: 1 }); // Down
+        } else {
+            snake.changeDirection({ x: 0, y: -1 }); // Up
+        }
+    }
+}
+
+// Prevent scrolling on mobile when touching the game area
+document.body.addEventListener('touchstart', (e) => {
+    if (e.target === canvas || e.target.classList.contains('control-btn')) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+document.body.addEventListener('touchend', (e) => {
+    if (e.target === canvas || e.target.classList.contains('control-btn')) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+document.body.addEventListener('touchmove', (e) => {
+    if (e.target === canvas || e.target.classList.contains('control-btn')) {
+        e.preventDefault();
+    }
+}, { passive: false });
 
 // Initial render
 render();

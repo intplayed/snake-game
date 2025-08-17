@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Snake Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -18,8 +18,19 @@
             <button id="startBtn">Start Game</button>
             <button id="restartBtn" style="display: none;">Restart</button>
         </div>
+        <div class="mobile-controls" id="mobileControls" style="display: none;">
+            <div class="control-row">
+                <button class="control-btn" id="upBtn">↑</button>
+            </div>
+            <div class="control-row">
+                <button class="control-btn" id="leftBtn">←</button>
+                <button class="control-btn" id="downBtn">↓</button>
+                <button class="control-btn" id="rightBtn">→</button>
+            </div>
+        </div>
         <div class="instructions">
-            <p>Use arrow keys to control the snake</p>
+            <p class="desktop-instruction">Use arrow keys to control the snake</p>
+            <p class="mobile-instruction" style="display: none;">Tap the buttons or swipe to control the snake</p>
             <p>Eat the red food to grow and increase your score</p>
         </div>
         <div id="gameOver" class="game-over" style="display: none;">

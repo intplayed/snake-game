@@ -112,28 +112,167 @@ button:active {
     margin-bottom: 10px;
 }
 
-@media (max-width: 600px) {
+/* Mobile Controls */
+.mobile-controls {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.control-btn {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1.5em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+    background: linear-gradient(45deg, #2980b9, #3498db);
+}
+
+/* Touch-friendly canvas */
+#gameCanvas {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
     .game-container {
         padding: 20px;
-        margin: 10px;
+        margin: 0;
+        width: 100%;
+        max-width: 400px;
     }
     
     h1 {
         font-size: 2em;
+        margin-bottom: 15px;
     }
     
     #gameCanvas {
-        width: 300px;
-        height: 300px;
+        width: 320px;
+        height: 320px;
+        max-width: 90vw;
+        max-height: 90vw;
     }
     
     .game-info {
         flex-direction: column;
         gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .score, .high-score {
+        min-width: auto;
+        padding: 8px 16px;
     }
     
     button {
         padding: 10px 20px;
         font-size: 1em;
+    }
+    
+    .mobile-controls {
+        display: flex !important;
+    }
+    
+    .desktop-instruction {
+        display: none !important;
+    }
+    
+    .mobile-instruction {
+        display: block !important;
+    }
+    
+    .instructions {
+        font-size: 0.85em;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-container {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 1.8em;
+    }
+    
+    #gameCanvas {
+        width: 280px;
+        height: 280px;
+    }
+    
+    .control-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3em;
+    }
+    
+    .game-info {
+        font-size: 1em;
+    }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+    .game-container {
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+    }
+    
+    #gameCanvas {
+        width: 250px;
+        height: 250px;
+    }
+    
+    .mobile-controls {
+        margin: 10px 0;
+    }
+    
+    .control-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2em;
+    }
+    
+    .instructions {
+        font-size: 0.8em;
+        margin-top: 10px;
     }
 }
