@@ -66,7 +66,15 @@ let game = {
     speed: INITIAL_SPEED,
     gameLoop: null,
     currentLevel: 1,
-    walls: []
+    walls: [],
+    mode: 'single', // 'single' or 'multiplayer'
+    players: {
+        player1: { score: 0, snake: null },
+        player2: { score: 0, snake: null }
+    },
+    currentPlayer: 'player1',
+    roomCode: null,
+    isHost: false
 };
 
 // Snake class
@@ -143,14 +151,13 @@ class Snake {
         }
     }
 
-    render() {
-        ctx.fillStyle = '#2ecc71';
+    render(playerColor = '#2ecc71') {
         this.body.forEach((segment, index) => {
             if (index === 0) {
                 // Head - slightly different color
-                ctx.fillStyle = '#27ae60';
+                ctx.fillStyle = playerColor === '#2ecc71' ? '#27ae60' : '#c0392b';
             } else {
-                ctx.fillStyle = '#2ecc71';
+                ctx.fillStyle = playerColor;
             }
             
             ctx.fillRect(
@@ -207,7 +214,11 @@ class Food {
 
 // Game objects
 let snake = new Snake();
+let snake2 = new Snake(); // Player 2 snake
 let food = new Food();
+
+// Initialize Player 2 snake position
+snake2.body = [{ x: 5, y: 5 }];
 
 // Initialize high score display
 highScoreElement.textContent = game.highScore;
@@ -248,21 +259,76 @@ function previousLevel() {
     return false;
 }
 
+// Multiplayer functions
+function switchToSinglePlayer() {
+    game.mode = 'single';
+    document.getElementById('multiplayerInfo').style.display = 'none';
+    document.querySelector('.game-info').style.display = 'flex';
+    document.getElementById('singlePlayerBtn').classList.add('active');
+    document.getElementById('multiPlayerBtn').classList.remove('active');
+}
+
+function switchToMultiplayer() {
+    game.mode = 'multiplayer';
+    document.getElementById('multiplayerInfo').style.display = 'block';
+    document.querySelector('.game-info').style.display = 'none';
+    document.getElementById('singlePlayerBtn').classList.remove('active');
+    document.getElementById('multiPlayerBtn').classList.add('active');
+}
+
+function createRoom() {
+    game.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    game.isHost = true;
+    document.getElementById('roomCode').value = game.roomCode;
+    alert(`Room created! Code: ${game.roomCode}\nShare this code with your friend.`);
+}
+
+function joinRoom() {
+    const code = document.getElementById('roomCode').value.toUpperCase();
+    if (code.length === 6) {
+        game.roomCode = code;
+        game.isHost = false;
+        alert(`Joined room: ${code}`);
+    } else {
+        alert('Please enter a valid 6-character room code');
+    }
+}
+
 // Game functions
 function startGame() {
     if (game.isRunning) return;
     
     game.isRunning = true;
-    game.score = 0;
     game.speed = INITIAL_SPEED;
     
     // Load current level
     loadLevel(game.currentLevel);
     
-    // Reset snake
-    snake = new Snake();
-    snake.direction = { x: 1, y: 0 };
-    snake.nextDirection = { x: 1, y: 0 };
+    if (game.mode === 'single') {
+        // Single player mode
+        game.score = 0;
+        snake = new Snake();
+        snake.direction = { x: 1, y: 0 };
+        snake.nextDirection = { x: 1, y: 0 };
+    } else {
+        // Multiplayer mode
+        game.players.player1.score = 0;
+        game.players.player2.score = 0;
+        
+        // Reset both snakes
+        snake = new Snake();
+        snake.body = [{ x: 15, y: 10 }];
+        snake.direction = { x: -1, y: 0 };
+        snake.nextDirection = { x: -1, y: 0 };
+        
+        snake2 = new Snake();
+        snake2.body = [{ x: 5, y: 10 }];
+        snake2.direction = { x: 1, y: 0 };
+        snake2.nextDirection = { x: 1, y: 0 };
+        
+        game.players.player1.snake = snake;
+        game.players.player2.snake = snake2;
+    }
     
     // Reset food
     food = new Food();
@@ -299,50 +365,129 @@ function endGame() {
 }
 
 function gameUpdate() {
-    // Move snake
-    snake.move();
-    
-    // Handle wrap-around if enabled
-    snake.wrapPosition();
-    
-    // Check collisions
-    if (snake.checkWallCollision() || snake.checkSelfCollision()) {
-        endGame();
-        return;
-    }
-    
-    // Check food collision
-    if (food.checkCollision(snake)) {
-        snake.grow();
-        food.generateNewPosition();
-        ensureFoodNotOnSnake();
+    if (game.mode === 'single') {
+        // Single player logic
+        snake.move();
+        snake.wrapPosition();
         
-        // Update score and speed
-        game.score += 10;
-        updateScore();
+        if (snake.checkWallCollision() || snake.checkSelfCollision()) {
+            endGame();
+            return;
+        }
         
-        // Increase speed slightly
-        if (game.score % 50 === 0) {
-            game.speed = Math.max(80, game.speed - 5);
-            clearInterval(game.gameLoop);
-            game.gameLoop = setInterval(gameUpdate, game.speed);
+        if (food.checkCollision(snake)) {
+            snake.grow();
+            food.generateNewPosition();
+            ensureFoodNotOnSnake();
+            
+            game.score += 10;
+            updateScore();
+            
+            if (game.score % 50 === 0) {
+                game.speed = Math.max(80, game.speed - 5);
+                clearInterval(game.gameLoop);
+                game.gameLoop = setInterval(gameUpdate, game.speed);
+            }
+        } else {
+            snake.shrink();
         }
     } else {
-        snake.shrink();
+        // Multiplayer logic
+        snake.move();
+        snake2.move();
+        snake.wrapPosition();
+        snake2.wrapPosition();
+        
+        // Check collisions for both players
+        const player1Dead = snake.checkWallCollision() || snake.checkSelfCollision() || checkSnakeCollision(snake, snake2);
+        const player2Dead = snake2.checkWallCollision() || snake2.checkSelfCollision() || checkSnakeCollision(snake2, snake);
+        
+        if (player1Dead || player2Dead) {
+            endMultiplayerGame(player1Dead, player2Dead);
+            return;
+        }
+        
+        // Check food collision for both players
+        if (food.checkCollision(snake)) {
+            snake.grow();
+            game.players.player1.score += 10;
+            food.generateNewPosition();
+            ensureFoodNotOnSnake();
+        } else {
+            snake.shrink();
+        }
+        
+        if (food.checkCollision(snake2)) {
+            snake2.grow();
+            game.players.player2.score += 10;
+            food.generateNewPosition();
+            ensureFoodNotOnSnake();
+        } else {
+            snake2.shrink();
+        }
+        
+        updateMultiplayerScore();
     }
     
     render();
 }
 
+function checkSnakeCollision(snake1, snake2) {
+    const head = snake1.body[0];
+    return snake2.body.some(segment => segment.x === head.x && segment.y === head.y);
+}
+
+function endMultiplayerGame(player1Dead, player2Dead) {
+    game.isRunning = false;
+    clearInterval(game.gameLoop);
+    
+    let winner = '';
+    if (player1Dead && player2Dead) {
+        winner = 'Draw!';
+    } else if (player1Dead) {
+        winner = 'Player 2 Wins!';
+    } else if (player2Dead) {
+        winner = 'Player 1 Wins!';
+    }
+    
+    finalScoreElement.textContent = winner;
+    gameOverDiv.style.display = 'block';
+    
+    startBtn.style.display = 'inline-block';
+    restartBtn.style.display = 'none';
+}
+
 function ensureFoodNotOnSnake() {
-    while (snake.body.some(segment => 
-        segment.x === food.position.x && segment.y === food.position.y)) {
+    let attempts = 0;
+    while (attempts < 100) {
+        let collision = false;
+        
+        // Check collision with player 1 snake
+        if (snake.body.some(segment =>
+            segment.x === food.position.x && segment.y === food.position.y)) {
+            collision = true;
+        }
+        
+        // Check collision with player 2 snake in multiplayer mode
+        if (game.mode === 'multiplayer' && snake2.body.some(segment =>
+            segment.x === food.position.x && segment.y === food.position.y)) {
+            collision = true;
+        }
+        
+        if (!collision) break;
+        
         food.generateNewPosition();
+        attempts++;
     }
 }
 
 function updateScore() {
     scoreElement.textContent = game.score;
+}
+
+function updateMultiplayerScore() {
+    document.getElementById('player1Score').textContent = game.players.player1.score;
+    document.getElementById('player2Score').textContent = game.players.player2.score;
 }
 
 function render() {
@@ -378,7 +523,13 @@ function render() {
     
     // Render game objects
     food.render();
-    snake.render();
+    
+    if (game.mode === 'single') {
+        snake.render('#2ecc71'); // Green for single player
+    } else {
+        snake.render('#2ecc71');  // Green for Player 1
+        snake2.render('#e74c3c'); // Red for Player 2
+    }
 }
 
 // Mobile detection
@@ -398,6 +549,14 @@ if (isMobile()) {
 // Event listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+
+// Game mode buttons
+document.getElementById('singlePlayerBtn').addEventListener('click', switchToSinglePlayer);
+document.getElementById('multiPlayerBtn').addEventListener('click', switchToMultiplayer);
+
+// Multiplayer room buttons
+document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+document.getElementById('joinRoomBtn').addEventListener('click', joinRoom);
 
 // Level control buttons
 document.getElementById('prevLevel').addEventListener('click', () => {
@@ -433,6 +592,7 @@ document.getElementById('rightBtn').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
     if (!game.isRunning) return;
     
+    // Player 1 controls (Arrow keys)
     switch (e.key) {
         case 'ArrowUp':
             e.preventDefault();
@@ -450,6 +610,28 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
             snake.changeDirection({ x: 1, y: 0 });
             break;
+    }
+    
+    // Player 2 controls (WASD keys) - only in multiplayer mode
+    if (game.mode === 'multiplayer') {
+        switch (e.key.toLowerCase()) {
+            case 'w':
+                e.preventDefault();
+                snake2.changeDirection({ x: 0, y: -1 });
+                break;
+            case 's':
+                e.preventDefault();
+                snake2.changeDirection({ x: 0, y: 1 });
+                break;
+            case 'a':
+                e.preventDefault();
+                snake2.changeDirection({ x: -1, y: 0 });
+                break;
+            case 'd':
+                e.preventDefault();
+                snake2.changeDirection({ x: 1, y: 0 });
+                break;
+        }
     }
 });
 

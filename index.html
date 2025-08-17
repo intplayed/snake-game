@@ -9,9 +9,24 @@
 <body>
     <div class="game-container">
         <h1>Snake Game</h1>
+        <div class="game-mode-selector">
+            <button class="mode-btn active" id="singlePlayerBtn">Single Player</button>
+            <button class="mode-btn" id="multiPlayerBtn">Multiplayer</button>
+        </div>
         <div class="game-info">
             <div class="score">Score: <span id="score">0</span></div>
             <div class="high-score">High Score: <span id="high-score">0</span></div>
+        </div>
+        <div class="multiplayer-info" id="multiplayerInfo" style="display: none;">
+            <div class="player-info">
+                <div class="player1-score">Player 1: <span id="player1Score">0</span></div>
+                <div class="player2-score">Player 2: <span id="player2Score">0</span></div>
+            </div>
+            <div class="room-info">
+                <input type="text" id="roomCode" placeholder="Enter room code" maxlength="6">
+                <button id="joinRoomBtn">Join Room</button>
+                <button id="createRoomBtn">Create Room</button>
+            </div>
         </div>
         <div class="level-info">
             <div class="level-controls">
