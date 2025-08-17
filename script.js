@@ -2,6 +2,51 @@
 const GRID_SIZE = 20;
 const CANVAS_SIZE = 400;
 const INITIAL_SPEED = 150;
+const GRID_WIDTH = CANVAS_SIZE / GRID_SIZE;
+const GRID_HEIGHT = CANVAS_SIZE / GRID_SIZE;
+
+// Game settings
+let gameSettings = {
+    wrapAround: false,
+    currentLevel: 1
+};
+
+// Level configurations
+const LEVELS = {
+    1: {
+        name: "Classic",
+        walls: [],
+        wrapAround: false
+    },
+    2: {
+        name: "Wrap Around",
+        walls: [],
+        wrapAround: true
+    },
+    3: {
+        name: "Center Wall",
+        walls: [
+            {x: 9, y: 8}, {x: 10, y: 8}, {x: 11, y: 8},
+            {x: 9, y: 9}, {x: 10, y: 9}, {x: 11, y: 9},
+            {x: 9, y: 10}, {x: 10, y: 10}, {x: 11, y: 10}
+        ],
+        wrapAround: false
+    },
+    4: {
+        name: "Maze",
+        walls: [
+            // Outer border gaps
+            {x: 5, y: 0}, {x: 6, y: 0}, {x: 13, y: 0}, {x: 14, y: 0},
+            {x: 0, y: 5}, {x: 0, y: 6}, {x: 0, y: 13}, {x: 0, y: 14},
+            {x: 19, y: 5}, {x: 19, y: 6}, {x: 19, y: 13}, {x: 19, y: 14},
+            {x: 5, y: 19}, {x: 6, y: 19}, {x: 13, y: 19}, {x: 14, y: 19},
+            // Inner walls
+            {x: 7, y: 7}, {x: 8, y: 7}, {x: 11, y: 7}, {x: 12, y: 7},
+            {x: 7, y: 12}, {x: 8, y: 12}, {x: 11, y: 12}, {x: 12, y: 12}
+        ],
+        wrapAround: true
+    }
+};
 
 // Game elements
 const canvas = document.getElementById('gameCanvas');
@@ -19,7 +64,9 @@ let game = {
     score: 0,
     highScore: localStorage.getItem('snakeHighScore') || 0,
     speed: INITIAL_SPEED,
-    gameLoop: null
+    gameLoop: null,
+    currentLevel: 1,
+    walls: []
 };
 
 // Snake class
@@ -70,8 +117,30 @@ class Snake {
 
     checkWallCollision() {
         const head = this.body[0];
-        return head.x < 0 || head.x >= CANVAS_SIZE / GRID_SIZE || 
-               head.y < 0 || head.y >= CANVAS_SIZE / GRID_SIZE;
+        const level = LEVELS[game.currentLevel];
+        
+        // Check boundary collision (only if wrap-around is disabled)
+        if (!level.wrapAround) {
+            if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
+                return true;
+            }
+        }
+        
+        // Check wall collision
+        return game.walls.some(wall => wall.x === head.x && wall.y === head.y);
+    }
+
+    wrapPosition() {
+        const head = this.body[0];
+        const level = LEVELS[game.currentLevel];
+        
+        if (level.wrapAround) {
+            // Wrap around screen edges
+            if (head.x < 0) head.x = GRID_WIDTH - 1;
+            if (head.x >= GRID_WIDTH) head.x = 0;
+            if (head.y < 0) head.y = GRID_HEIGHT - 1;
+            if (head.y >= GRID_HEIGHT) head.y = 0;
+        }
     }
 
     render() {
@@ -102,10 +171,22 @@ class Food {
     }
 
     generateNewPosition() {
-        this.position = {
-            x: Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)),
-            y: Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE))
-        };
+        let validPosition = false;
+        let attempts = 0;
+        
+        while (!validPosition && attempts < 100) {
+            this.position = {
+                x: Math.floor(Math.random() * GRID_WIDTH),
+                y: Math.floor(Math.random() * GRID_HEIGHT)
+            };
+            
+            // Check if position is not on a wall
+            validPosition = !game.walls.some(wall =>
+                wall.x === this.position.x && wall.y === this.position.y
+            );
+            
+            attempts++;
+        }
     }
 
     checkCollision(snake) {
@@ -131,6 +212,42 @@ let food = new Food();
 // Initialize high score display
 highScoreElement.textContent = game.highScore;
 
+// Level management
+function loadLevel(levelNum) {
+    const level = LEVELS[levelNum];
+    if (!level) return false;
+    
+    game.currentLevel = levelNum;
+    game.walls = [...level.walls];
+    gameSettings.wrapAround = level.wrapAround;
+    
+    // Update level display
+    const levelElement = document.getElementById('levelName');
+    if (levelElement) {
+        levelElement.textContent = level.name;
+    }
+    
+    return true;
+}
+
+function nextLevel() {
+    const nextLevelNum = game.currentLevel + 1;
+    if (LEVELS[nextLevelNum]) {
+        loadLevel(nextLevelNum);
+        return true;
+    }
+    return false;
+}
+
+function previousLevel() {
+    const prevLevelNum = game.currentLevel - 1;
+    if (LEVELS[prevLevelNum]) {
+        loadLevel(prevLevelNum);
+        return true;
+    }
+    return false;
+}
+
 // Game functions
 function startGame() {
     if (game.isRunning) return;
@@ -138,6 +255,9 @@ function startGame() {
     game.isRunning = true;
     game.score = 0;
     game.speed = INITIAL_SPEED;
+    
+    // Load current level
+    loadLevel(game.currentLevel);
     
     // Reset snake
     snake = new Snake();
@@ -181,6 +301,9 @@ function endGame() {
 function gameUpdate() {
     // Move snake
     snake.move();
+    
+    // Handle wrap-around if enabled
+    snake.wrapPosition();
     
     // Check collisions
     if (snake.checkWallCollision() || snake.checkSelfCollision()) {
@@ -242,6 +365,17 @@ function render() {
         ctx.stroke();
     }
     
+    // Draw walls
+    ctx.fillStyle = '#95a5a6';
+    game.walls.forEach(wall => {
+        ctx.fillRect(
+            wall.x * GRID_SIZE,
+            wall.y * GRID_SIZE,
+            GRID_SIZE,
+            GRID_SIZE
+        );
+    });
+    
     // Render game objects
     food.render();
     snake.render();
@@ -249,8 +383,9 @@ function render() {
 
 // Mobile detection
 function isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-           (window.innerWidth <= 768);
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|YaBrowser/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768) ||
+           ('ontouchstart' in window);
 }
 
 // Show mobile controls if on mobile device
@@ -263,6 +398,19 @@ if (isMobile()) {
 // Event listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+
+// Level control buttons
+document.getElementById('prevLevel').addEventListener('click', () => {
+    if (!game.isRunning && previousLevel()) {
+        render(); // Re-render to show new level
+    }
+});
+
+document.getElementById('nextLevel').addEventListener('click', () => {
+    if (!game.isRunning && nextLevel()) {
+        render(); // Re-render to show new level
+    }
+});
 
 // Mobile control buttons
 document.getElementById('upBtn').addEventListener('click', () => {
@@ -380,6 +528,9 @@ document.body.addEventListener('touchmove', (e) => {
         e.preventDefault();
     }
 }, { passive: false });
+
+// Initialize game
+loadLevel(1); // Load first level
 
 // Initial render
 render();

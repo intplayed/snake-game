@@ -44,6 +44,56 @@ h1 {
     min-width: 120px;
 }
 
+.level-info {
+    margin-bottom: 20px;
+}
+
+.level-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 20px;
+    border-radius: 10px;
+    backdrop-filter: blur(5px);
+}
+
+.level-display {
+    font-size: 1.1em;
+    font-weight: bold;
+    min-width: 150px;
+    text-align: center;
+}
+
+.level-btn {
+    background: linear-gradient(45deg, #9b59b6, #8e44ad);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.level-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.level-btn:active {
+    transform: translateY(0);
+}
+
+.level-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
 #gameCanvas {
     border: 3px solid white;
     border-radius: 10px;
@@ -196,6 +246,26 @@ button:active {
     .score, .high-score {
         min-width: auto;
         padding: 8px 16px;
+    }
+    
+    .level-info {
+        margin-bottom: 15px;
+    }
+    
+    .level-controls {
+        gap: 10px;
+        padding: 8px 15px;
+    }
+    
+    .level-display {
+        font-size: 1em;
+        min-width: 120px;
+    }
+    
+    .level-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 1em;
     }
     
     button {
