@@ -581,18 +581,55 @@ function render() {
     }
 }
 
-// Mobile detection
+// Enhanced mobile detection
 function isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|YaBrowser/i.test(navigator.userAgent) ||
-           (window.innerWidth <= 768) ||
-           ('ontouchstart' in window);
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|yabrowser|mobile|phone|tablet/i.test(userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isSmallScreen = window.innerWidth <= 768;
+    
+    console.log('Mobile detection:', {
+        userAgent: userAgent,
+        isMobileUA: isMobileUA,
+        isTouchDevice: isTouchDevice,
+        isSmallScreen: isSmallScreen,
+        screenWidth: window.innerWidth
+    });
+    
+    return isMobileUA || isTouchDevice || isSmallScreen;
 }
 
-// Show mobile controls if on mobile device
-if (isMobile()) {
-    document.getElementById('mobileControls').style.display = 'flex';
-    document.querySelector('.desktop-instruction').style.display = 'none';
-    document.querySelector('.mobile-instruction').style.display = 'block';
+// Show mobile controls with better detection
+function setupMobileControls() {
+    const mobileControlsElement = document.getElementById('mobileControls');
+    const desktopInstruction = document.querySelector('.desktop-instruction');
+    const mobileInstruction = document.querySelector('.mobile-instruction');
+    
+    if (isMobile()) {
+        console.log('Mobile device detected, showing mobile controls');
+        if (mobileControlsElement) {
+            mobileControlsElement.style.display = 'flex';
+        }
+        if (desktopInstruction) {
+            desktopInstruction.style.display = 'none';
+        }
+        if (mobileInstruction) {
+            mobileInstruction.style.display = 'block';
+        }
+    } else {
+        console.log('Desktop device detected');
+        if (mobileControlsElement) {
+            mobileControlsElement.style.display = 'none';
+        }
+    }
+}
+
+// Setup mobile controls when DOM is ready
+document.addEventListener('DOMContentLoaded', setupMobileControls);
+
+// Also setup immediately if DOM is already loaded
+if (document.readyState !== 'loading') {
+    setupMobileControls();
 }
 
 // Event listeners
@@ -620,33 +657,79 @@ document.getElementById('nextLevel').addEventListener('click', () => {
     }
 });
 
-// Mobile control buttons with better touch handling
+// Mobile control buttons with enhanced touch handling
 function addMobileControl(buttonId, direction) {
     const button = document.getElementById(buttonId);
+    if (!button) {
+        console.error(`Button ${buttonId} not found`);
+        return;
+    }
     
-    // Touch events
-    button.addEventListener('touchstart', (e) => {
+    console.log(`Adding controls for ${buttonId}`);
+    
+    // Multiple event types for maximum compatibility
+    const handleControl = (e) => {
         e.preventDefault();
-        if (game.isRunning) snake.changeDirection(direction);
+        e.stopPropagation();
+        console.log(`${buttonId} pressed, game running: ${game.isRunning}`);
+        
+        if (game.isRunning) {
+            snake.changeDirection(direction);
+            console.log(`Direction changed to:`, direction);
+        }
+    };
+    
+    // Touch events (primary for mobile)
+    button.addEventListener('touchstart', handleControl, { passive: false });
+    button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
     }, { passive: false });
     
-    // Click events (fallback)
-    button.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (game.isRunning) snake.changeDirection(direction);
+    // Mouse events (fallback)
+    button.addEventListener('mousedown', handleControl);
+    button.addEventListener('click', handleControl);
+    
+    // Prevent context menu and selection
+    button.addEventListener('contextmenu', (e) => e.preventDefault());
+    button.addEventListener('selectstart', (e) => e.preventDefault());
+    
+    // Visual feedback
+    button.addEventListener('touchstart', () => {
+        button.style.transform = 'scale(0.9)';
+        button.style.opacity = '0.8';
     });
     
-    // Prevent context menu
-    button.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
+    button.addEventListener('touchend', () => {
+        button.style.transform = 'scale(1)';
+        button.style.opacity = '1';
     });
 }
 
-// Add controls for all directions
-addMobileControl('upBtn', { x: 0, y: -1 });
-addMobileControl('downBtn', { x: 0, y: 1 });
-addMobileControl('leftBtn', { x: -1, y: 0 });
-addMobileControl('rightBtn', { x: 1, y: 0 });
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, adding mobile controls');
+    
+    // Add controls for all directions
+    addMobileControl('upBtn', { x: 0, y: -1 });
+    addMobileControl('downBtn', { x: 0, y: 1 });
+    addMobileControl('leftBtn', { x: -1, y: 0 });
+    addMobileControl('rightBtn', { x: 1, y: 0 });
+});
+
+// Also add controls immediately in case DOM is already loaded
+if (document.readyState === 'loading') {
+    // DOM is still loading
+} else {
+    // DOM is already loaded
+    console.log('DOM already loaded, adding mobile controls immediately');
+    setTimeout(() => {
+        addMobileControl('upBtn', { x: 0, y: -1 });
+        addMobileControl('downBtn', { x: 0, y: 1 });
+        addMobileControl('leftBtn', { x: -1, y: 0 });
+        addMobileControl('rightBtn', { x: 1, y: 0 });
+    }, 100);
+}
 
 // Keyboard controls
 document.addEventListener('keydown', (e) => {
@@ -805,8 +888,62 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Debug function for mobile testing
+function debugMobileControls() {
+    console.log('=== MOBILE DEBUG INFO ===');
+    console.log('User Agent:', navigator.userAgent);
+    console.log('Touch support:', 'ontouchstart' in window);
+    console.log('Max touch points:', navigator.maxTouchPoints);
+    console.log('Screen width:', window.innerWidth);
+    console.log('Is mobile:', isMobile());
+    
+    const buttons = ['upBtn', 'downBtn', 'leftBtn', 'rightBtn'];
+    buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        console.log(`${id}:`, btn ? 'found' : 'NOT FOUND');
+        if (btn) {
+            console.log(`${id} visible:`, window.getComputedStyle(btn).display !== 'none');
+        }
+    });
+    
+    const mobileControls = document.getElementById('mobileControls');
+    console.log('Mobile controls element:', mobileControls ? 'found' : 'NOT FOUND');
+    if (mobileControls) {
+        console.log('Mobile controls visible:', window.getComputedStyle(mobileControls).display !== 'none');
+    }
+    
+    alert('Debug info logged to console. Check browser developer tools.');
+}
+
 // Initialize game
 loadLevel(1); // Load first level
 
 // Initial render
 render();
+
+// Add debug functionality for mobile
+if (isMobile()) {
+    // Add debug button
+    setTimeout(() => {
+        const debugBtn = document.createElement('button');
+        debugBtn.textContent = 'Debug';
+        debugBtn.style.position = 'fixed';
+        debugBtn.style.top = '10px';
+        debugBtn.style.right = '10px';
+        debugBtn.style.zIndex = '9999';
+        debugBtn.style.padding = '5px 10px';
+        debugBtn.style.fontSize = '12px';
+        debugBtn.style.background = 'red';
+        debugBtn.style.color = 'white';
+        debugBtn.onclick = debugMobileControls;
+        document.body.appendChild(debugBtn);
+        
+        // Force mobile controls to be visible
+        const mobileControls = document.getElementById('mobileControls');
+        if (mobileControls) {
+            mobileControls.style.display = 'flex';
+            mobileControls.style.visibility = 'visible';
+            console.log('Forced mobile controls to be visible');
+        }
+    }, 1000);
+}
