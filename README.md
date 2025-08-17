@@ -28,7 +28,7 @@ A classic Snake game built with HTML5 Canvas and JavaScript.
 
 ## Live Demo
 
-Play the game online: [Snake Game](https://yourusername.github.io/snake-game)
+Play the game online: [Snake Game](https://intplayed.github.io/snake-game)
 
 ## Local Development
 
